@@ -1,0 +1,51 @@
+(function () {
+  let currentIndex = -1;
+  let isWaitingForLoad = false;
+
+  const scrollNext = () => {
+    const loader = document.querySelector('#ctis-loading');
+
+    // If loader is visible, wait and retry later
+    if (loader && getComputedStyle(loader).display === 'block') {
+      console.log('Loader is active... waiting before next scroll.');
+      isWaitingForLoad = true;
+      return;
+    }
+
+    // If we were waiting and it's now gone, reset flag and refresh articles
+    if (isWaitingForLoad) {
+      isWaitingForLoad = false;
+      console.log('Loader finished. Refreshing article list.');
+    }
+
+    // Recollect articles in case more were loaded
+    const articles = Array.from(document.querySelectorAll('article.item-list'));
+
+    // Find the currently visible article
+    let foundVisible = false;
+    articles.forEach((article, i) => {
+      const rect = article.getBoundingClientRect();
+      if (!foundVisible && rect.top >= 0 && rect.top < window.innerHeight) {
+        currentIndex = i;
+        foundVisible = true;
+      }
+    });
+
+    if (currentIndex < articles.length - 1) {
+      const nextArticle = articles[currentIndex + 1];
+      nextArticle.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      console.log(`Scrolled to article ${currentIndex + 2} of ${articles.length}`);
+    } else {
+      // Check if loader might load more content
+      if (loader && getComputedStyle(loader).display === 'none') {
+        console.log('At last known article. Waiting to see if more load...');
+        isWaitingForLoad = true; // Set flag and wait for new content
+      } else {
+        console.log('No more articles and loader is inactive. Stopping scroll.');
+        clearInterval(scrollInterval);
+      }
+    }
+  };
+
+  const scrollInterval = setInterval(scrollNext, 5000);
+})();
