@@ -1,51 +1,61 @@
 (function () {
-  let currentIndex = -1;
+  let currentIndex = 0;
   let isWaitingForLoad = false;
+  let isPaused = false;
+
+  const getItems = () => Array.from(document.querySelectorAll('article.item-list'));
+
+  // Toggle pause/resume with Space or "P"
+  const toggleScroll = () => {
+    isPaused = !isPaused;
+    console.log(isPaused ? '⏸️ Auto-scroll paused.' : '▶️ Auto-scroll resumed.');
+  };
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === ' ' || e.key.toLowerCase() === 'p') {
+      toggleScroll();
+    }
+  });
 
   const scrollNext = () => {
+    if (isPaused) {
+      console.log('⏸️ Scroll is paused.');
+      return;
+    }
+
     const loader = document.querySelector('#ctis-loading');
 
-    // If loader is visible, wait and retry later
+    // If loader is visible, wait
     if (loader && getComputedStyle(loader).display === 'block') {
-      console.log('Loader is active... waiting before next scroll.');
+      console.log('⏳ Loader is active... waiting.');
       isWaitingForLoad = true;
       return;
     }
 
-    // If we were waiting and it's now gone, reset flag and refresh articles
-    if (isWaitingForLoad) {
+    // Loader finished
+    if (isWaitingForLoad && loader && getComputedStyle(loader).display === 'none') {
       isWaitingForLoad = false;
-      console.log('Loader finished. Refreshing article list.');
+      console.log('✅ Loader finished. Resuming scroll.');
     }
 
-    // Recollect articles in case more were loaded
-    const articles = Array.from(document.querySelectorAll('article.item-list'));
+    const items = getItems();
 
-    // Find the currently visible article
-    let foundVisible = false;
-    articles.forEach((article, i) => {
-      const rect = article.getBoundingClientRect();
-      if (!foundVisible && rect.top >= 0 && rect.top < window.innerHeight) {
-        currentIndex = i;
-        foundVisible = true;
-      }
-    });
-
-    if (currentIndex < articles.length - 1) {
-      const nextArticle = articles[currentIndex + 1];
-      nextArticle.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      console.log(`Scrolled to article ${currentIndex + 2} of ${articles.length}`);
+    if (currentIndex < items.length) {
+      const item = items[currentIndex];
+      item.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      console.log(`📜 Scrolled to article ${currentIndex + 1} of ${items.length}`);
+      currentIndex++;
     } else {
-      // Check if loader might load more content
       if (loader && getComputedStyle(loader).display === 'none') {
-        console.log('At last known article. Waiting to see if more load...');
-        isWaitingForLoad = true; // Set flag and wait for new content
+        console.log('🕐 Waiting for more articles to load...');
+        isWaitingForLoad = true;
       } else {
-        console.log('No more articles and loader is inactive. Stopping scroll.');
-        clearInterval(scrollInterval);
+        console.log('✅ All articles scrolled. Stopping.');
+        clearInterval(window.articleScrollInterval);
       }
     }
   };
 
-  const scrollInterval = setInterval(scrollNext, 5000);
+  window.articleScrollInterval = setInterval(scrollNext, 5000);
+  console.log('🚀 Auto-scroll started for <article class="item-list">. Press Spacebar or "P" to pause/resume.');
 })();
